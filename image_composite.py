@@ -110,11 +110,16 @@ class composite_gui(QMainWindow):
         if len(img.shape) == 2:
             img = np.repeat(img[:,:,np.newaxis], 3, axis=2)
         h,w,_ = img.shape
-        pixmap = QPixmap(to_qt_img(img))
-        if size is not None:
-            pixmap = pixmap.scaled(size[0], size[1])
+        self.canvas_img = cv2.resize(img, (size[0], size[1]))
+
+        self.set_img(to_qt_img(self.canvas_img), label)
+
+
+    def set_img(self, img, label):
+        pixmap = QPixmap(img)
         label.setPixmap(pixmap)
         label.adjustSize()
+
 
     def load_file(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -162,7 +167,23 @@ class composite_gui(QMainWindow):
 
     @pyqtSlot()
     def render_layers(self):
-        pass
+        # shadow layer composite
+        tmp = self.canvas_img
+        print('canvas shape: ', tmp.shape)
+
+        # composite result with cutout
+        for cutout in self.cutout_layer:
+            cutout_img = cutout.get_img()
+            h, w,_ = cutout_img.shape
+            x, y = cutout.pos().x(), cutout.pos().y()
+            mask = cutout_img[:,:,3]
+            mask = np.repeat(mask[:,:,np.newaxis], 3, axis=2)
+            print('mask: {}, tmp: {}, cutout: {}'.format(mask.shape, tmp[y:y+h,x:x+w,:].shape, cutout_img[:,:,:3].shape))
+
+            tmp = (1.0-mask) * tmp[y:y+h,x:x+w,:] + mask * cutout_img[:,:,:3]
+
+        self.canvas_img = tmp
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

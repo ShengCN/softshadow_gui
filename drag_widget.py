@@ -2,7 +2,7 @@ import sys
 
 from PyQt5.QtCore import Qt, QMimeData
 from PyQt5.QtGui import QDrag, QPixmap
-from PyQt5.QtWidgets import QLabel, QSizeGrip, QGridLayout
+from PyQt5.QtWidgets import QLabel, QApplication
 from PyQt5.QtGui import QPixmap, QImage
 import numpy as np
 import os
@@ -18,6 +18,7 @@ class drag_img(QLabel):
         if e.buttons() == Qt.LeftButton:
             # resize window
             if self.resize_flag:
+                QApplication.setOverrideCursor(Qt.WaitCursor)
                 w,h = e.pos().x(), e.pos().y()
                 print('resize window size {}, {}'.format(w,h))
                 np_img = cv2.resize(self.img, (w, h))
@@ -62,15 +63,7 @@ class drag_img(QLabel):
         return self.id
 
     def get_img(self):
-        """ Get numpy image from label pixmap
-        """
-        size = self.pixmap().size()
-        h,w = size.width(), size.height()
-
-        img = self.pixmap().toImage()
-        b = img.bits()
-        b.setsize(h * w * 4)
-        return np.frombuffer(b, dtype=np.uint8).reshape((w,h,4))
+        return self.img
 
     def set_img(self, np_img):
         pixmap = QPixmap(self.to_qt_img(np_img))
