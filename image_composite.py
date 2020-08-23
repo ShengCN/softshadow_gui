@@ -33,7 +33,8 @@ class composite_gui(QMainWindow):
 
         # canvas
         self.canvas = QLabel(self)
-        self.canvas.move(10,40)
+        self.canvas_offset = (10,40)
+        self.canvas.move(self.canvas_offset[0], self.canvas_offset[1])
         self.read_img('imgs/x.jpg', self.canvas, (1024, 1024))
 
         # buttons
@@ -136,7 +137,6 @@ class composite_gui(QMainWindow):
         cutout_label.show()
 
         self.cutout_layer.append(cutout_label)
-        self.render_layers()
 
     def get_cutout_label(self, id):
         for label in self.cutout_layer:
@@ -157,8 +157,6 @@ class composite_gui(QMainWindow):
         print('load file', canvas_file)
         self.read_img(canvas_file, self.canvas, (1024, 1024))
 
-        self.render_layers()
-
     @pyqtSlot()
     def load_cutout(self):
         cutout_file = self.load_file()
@@ -168,20 +166,43 @@ class composite_gui(QMainWindow):
     @pyqtSlot()
     def render_layers(self):
         # shadow layer composite
-        tmp = self.canvas_img
+        tmp = self.canvas_img.copy()
         print('canvas shape: ', tmp.shape)
+        canvas_h, canvas_w,_ = tmp.shape
 
         # composite result with cutout
         for cutout in self.cutout_layer:
             cutout_img = cutout.get_img()
+            x, y = cutout.pos().x()-self.canvas.pos().x(), cutout.pos().y()-self.canvas.pos().y()
             h, w,_ = cutout_img.shape
-            x, y = cutout.pos().x(), cutout.pos().y()
-            mask = cutout_img[:,:,3]
-            mask = np.repeat(mask[:,:,np.newaxis], 3, axis=2)
-            print('orignal shape: ', tmp.shape)
-            print('tmp: {}, x: {}, y: {}'.format(tmp[y:y+h,x:x+w,:].shape, x, y))
 
-            tmp[y:y + h, x:x + w, :] = (1.0-mask) * tmp[y:y+h,x:x+w,:] + mask * cutout_img[:,:,:3]
+            mask_x,mask_y = 0, 0
+            mask_h, mask_w = h, w
+            tmp_x, tmp_y = x,y
+
+            # boundary case
+            if x < 0:
+                tmp_x, mask_x = 0, -x
+
+            if y < 0:
+                tmp_y, mask_y = 0, -y
+
+            if x + w > canvas_w:
+                mask_w = canvas_w - x
+                tmp_x = x
+
+            if y + h > canvas_h:
+                mask_h = canvas_h - y
+                tmp_y = y
+
+            tmp_h,tmp_w = mask_h - mask_y, mask_w - mask_x
+            mask = cutout_img[mask_y: mask_h, mask_x:mask_w, 3]
+            mask = np.repeat(mask[:,:,np.newaxis], 3, axis=2)
+            print('original shape: ', tmp.shape)
+            print('tmp: {}, tmp x: {}, tmp y: {}, tmp w:{}, tmp h: {}'.format(tmp[tmp_y:tmp_y+tmp_h,tmp_x:tmp_x+tmp_w,:].shape, tmp_x, tmp_y, tmp_w, tmp_h))
+            print('mask: {}, mask: x: {}, mask y: {}, mask w: {}, mask h: {}'.format(mask.shape, mask_x, mask_y, mask_w, mask_h))
+
+            tmp[tmp_y:tmp_y+tmp_h,tmp_x:tmp_x+tmp_w,:] = (1.0-mask) * tmp[tmp_y:tmp_y+tmp_h,tmp_x:tmp_x+tmp_w,:] + mask * cutout_img[mask_y: mask_y + mask_h, mask_x:mask_x + mask_w,:3]
 
         self.canvas_img = tmp
         self.set_img(self.to_qt_img(self.canvas_img), self.canvas)

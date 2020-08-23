@@ -13,18 +13,31 @@ class drag_img(QLabel):
     def __init__(self, parent):
         super().__init__(parent)
         self.resize_flag = False
+        self.setScaledContents(True)
+
+    def enterEvent(self, e):
+        if self.check_resize(e.pos()):
+            QApplication.setOverrideCursor(Qt.SizeFDiagCursor)
+        else:
+            QApplication.setOverrideCursor(Qt.ArrowCursor)
+
+    def leaveEvent(self, e):
+        QApplication.setOverrideCursor(Qt.ArrowCursor)
 
     def mouseMoveEvent(self, e):
+        if not self.check_resize(e.pos()):
+            QApplication.setOverrideCursor(Qt.ArrowCursor)
         if e.buttons() == Qt.LeftButton:
             # resize window
             if self.resize_flag:
-                QApplication.setOverrideCursor(Qt.WaitCursor)
+                QApplication.setOverrideCursor(Qt.SizeFDiagCursor)
                 w,h = e.pos().x(), e.pos().y()
                 print('resize window size {}, {}'.format(w,h))
                 np_img = cv2.resize(self.img, (w, h))
-                self.set_img(np_img)
+                # self.set_img(np_img)
+                self.setFixedSize(w,h)
 
-        if e.buttons() == Qt.RightButton:
+        elif e.buttons() == Qt.RightButton:
             mimeData = QMimeData()
 
             drag = QDrag(self)
@@ -47,13 +60,14 @@ class drag_img(QLabel):
 
     def mouseReleaseEvent(self, e):
         self.resize_flag = False
+        QApplication.setOverrideCursor(Qt.ArrowCursor)
 
     def check_resize(self, pos):
         x,y = pos.x(), pos.y()
         print('x: {}, y: {}'.format(x, y))
         w,h = self.width(), self.height()
 
-        resize_region = 20
+        resize_region = w//2
         return w - x < resize_region and h - y < resize_region
 
     def set_id(self, id):
@@ -63,12 +77,15 @@ class drag_img(QLabel):
         return self.id
 
     def get_img(self):
-        return self.img
+        h,w = self.height(), self.width()
+        return cv2.resize(self.img, (w, h))
 
     def set_img(self, np_img):
+        h,w,_ = np_img.shape
         pixmap = QPixmap(self.to_qt_img(np_img))
         self.setPixmap(pixmap)
-        self.adjustSize()
+        self.setFixedSize(w,h)
+        # self.adjustSize()
 
     def to_qt_img(self, np_img):
         if np_img.dtype != np.uint8:
@@ -78,8 +95,8 @@ class drag_img(QLabel):
 
         h, w, c = np_img.shape
         # bytesPerLine = 3 * w
-        tmp = np_img[:,:,:3].copy()
-        return QImage(tmp.data, w, h, QImage.Format_RGB888)
+        tmp = np_img[:,:,:4].copy()
+        return QImage(tmp.data, w, h, QImage.Format_RGBA8888)
 
     def read_img(self, file):
         """
