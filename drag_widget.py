@@ -78,7 +78,8 @@ class drag_img(QLabel):
 
         h, w, c = np_img.shape
         # bytesPerLine = 3 * w
-        return QImage(np_img.data, w, h, QImage.Format_RGBA8888)
+        tmp = np_img[:,:,:3].copy()
+        return QImage(tmp.data, w, h, QImage.Format_RGB888)
 
     def read_img(self, file):
         """
