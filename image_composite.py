@@ -36,11 +36,32 @@ class composite_gui(QMainWindow):
         self.canvas.move(10,40)
         self.read_img('imgs/x.jpg', self.canvas, (1024, 1024))
 
+        # buttons
+        self.render_btn = QPushButton("render", self)
+        self.render_btn.move(1480, 40)
+        self.render_btn.clicked.connect(self.render_layers)
+
         # cutout layer
         self.cutout_layer = []
 
         # shadow layer
         self.shadow_layer = []
+
+        # # layouts
+        # canvas_group = QGroupBox("canvas")
+        # canvas_layout = QtWidgets.QHBoxLayout()
+        # canvas_layout.addWidget(self.canvas)
+        # canvas_group.setLayout(canvas_layout)
+        #
+        # control_group = QGroupBox('control')
+        # control_layout = QtWidgets.QVBoxLayout()
+        # control_layout.addWidget(self.render_btn)
+        # control_group.setLayout(control_layout)
+        #
+        # grid = QGridLayout()
+        # grid.addWidget(canvas_group, 0, 0)
+        # # grid.addWidget(control_group, 0, 1)
+        # self.setLayout(grid)
 
         self.show()
 
@@ -95,17 +116,6 @@ class composite_gui(QMainWindow):
         label.setPixmap(pixmap)
         label.adjustSize()
 
-    def get_img(self, label):
-        """ Get numpy image from label pixmap
-        """
-        size = label.pixmap().size()
-        h,w = size.width(), size.height()
-
-        img = label.pixmap().toImage()
-        b = img.bits()
-        b.setsize(h * w * 4)
-        return np.frombuffer(b, dtype=np.uint8).reshape((w,h,4))
-
     def load_file(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         fname = QFileDialog.getOpenFileName(self, 'Open file', os.path.join(dir_path,'imgs'))
@@ -116,7 +126,8 @@ class composite_gui(QMainWindow):
         cutout_label.set_id(self.cutout_count)
         self.cutout_count += 1
 
-        self.read_img(filename, cutout_label)
+        # self.read_img(filename, cutout_label)
+        cutout_label.read_img(filename)
         cutout_label.show()
 
         self.cutout_layer.append(cutout_label)
