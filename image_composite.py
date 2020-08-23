@@ -61,7 +61,6 @@ class composite_gui(QMainWindow):
         e.accept()
 
     def dropEvent(self, e):
-        position = e.pos()
         e.setDropAction(Qt.MoveAction)
         e.accept()
 
@@ -95,6 +94,17 @@ class composite_gui(QMainWindow):
             pixmap = pixmap.scaled(size[0], size[1])
         label.setPixmap(pixmap)
         label.adjustSize()
+
+    def get_img(self, label):
+        """ Get numpy image from label pixmap
+        """
+        size = label.pixmap().size()
+        h,w = size.width(), size.height()
+
+        img = label.pixmap().toImage()
+        b = img.bits()
+        b.setsize(h * w * 4)
+        return np.frombuffer(b, dtype=np.uint8).reshape((w,h,4))
 
     def load_file(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
