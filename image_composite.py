@@ -20,6 +20,7 @@ class composite_gui(QMainWindow):
         self.title = 'Shadow Compositing'
         self.left, self.top = 400,400
         self.width, self.height = 1640, 1080
+        self.cutout_count = 0
 
         self.init_ui()
 
@@ -27,7 +28,7 @@ class composite_gui(QMainWindow):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left,self.top, self.width, self.height)
         self.setFixedSize(self.width, self.height)
-
+        self.setAcceptDrops(True)
         self.set_menu()
 
         # canvas
@@ -56,25 +57,17 @@ class composite_gui(QMainWindow):
         file_menu.addAction(load_canvas_button)
         file_menu.addAction(load_cutout_button)
 
-    def set_drag_widget(self):
-        self.setAcceptDrops(True)
-        self.drag_img_wgt = drag_img(self)
-        self.drag_img_wgt.set_image('imgs/000_final.png')
-        self.drag_img_wgt.move(99, 65)
-
     def dragEnterEvent(self, e):
         e.accept()
 
     def dropEvent(self, e):
         position = e.pos()
-        self.drag_img_wgt.move(position)
-
         e.setDropAction(Qt.MoveAction)
         e.accept()
 
     def dragMoveEvent(self, e):
-        self.drag_img_wgt.move(e.pos())
         e.accept()
+        self.cur_cutout.move(e.pos() - self.cur_cutout_offset)
 
     """ Utilities
     """
@@ -109,11 +102,27 @@ class composite_gui(QMainWindow):
         return fname[0]
 
     def add_cutout(self, filename):
-        cutout_label = QLabel(self)
+        cutout_label = drag_img(self)
+        cutout_label.set_id(self.cutout_count)
+        self.cutout_count += 1
+
         self.read_img(filename, cutout_label)
         cutout_label.show()
-        
+
         self.cutout_layer.append(cutout_label)
+        self.render_layers()
+
+    def get_cutout_label(self, id):
+        for label in self.cutout_layer:
+            if label.get_id() == id:
+                return label
+
+        print('cannot find the label')
+        return None
+
+    def set_cur_label(self, id, offset_pos):
+        self.cur_cutout = self.get_cutout_label(id)
+        self.cur_cutout_offset = offset_pos
 
     #################### Actions ##############################
     @pyqtSlot()
@@ -121,6 +130,8 @@ class composite_gui(QMainWindow):
         canvas_file = self.load_file()
         print('load file', canvas_file)
         self.read_img(canvas_file, self.canvas, (1024, 1024))
+
+        self.render_layers()
 
     @pyqtSlot()
     def load_cutout(self):

@@ -9,7 +9,6 @@ class drag_img(QLabel):
         super().__init__(parent)
 
     def mouseMoveEvent(self, e):
-
         if e.buttons() != Qt.RightButton:
             return
 
@@ -28,6 +27,10 @@ class drag_img(QLabel):
         if e.button() == Qt.LeftButton:
             print('press')
 
-    def set_image(self, img_path):
-        pixmap = QPixmap(img_path)
-        self.setPixmap(pixmap)
+        self.parent().set_cur_label(self.id, e.pos() - self.rect().topLeft())
+
+    def set_id(self, id):
+        self.id = id
+
+    def get_id(self):
+        return self.id
