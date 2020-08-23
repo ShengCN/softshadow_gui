@@ -91,17 +91,17 @@ class composite_gui(QMainWindow):
 
     """ Utilities
     """
+    def to_qt_img(self, np_img):
+        if np_img.dtype != np.uint8:
+            np_img = np.clip(np_img, 0.0, 1.0)
+            np_img = np_img * 255.0
+            np_img = np_img.astype(np.uint8)
+
+        h, w, c = np_img.shape
+        # bytesPerLine = 3 * w
+        return QImage(np_img.data, w, h, QImage.Format_RGB888)
+
     def read_img(self, file, label, size=None):
-        def to_qt_img(np_img):
-            if np_img.dtype != np.uint8:
-                np_img = np.clip(np_img, 0.0, 1.0)
-                np_img = np_img * 255.0
-                np_img = np_img.astype(np.uint8)
-
-            h, w, c = np_img.shape
-            # bytesPerLine = 3 * w
-            return QImage(np_img.data, w, h, QImage.Format_RGB888)
-
         if not os.path.exists(file):
             print('cannot find file', file)
             return
@@ -112,7 +112,7 @@ class composite_gui(QMainWindow):
         h,w,_ = img.shape
         self.canvas_img = cv2.resize(img, (size[0], size[1]))
 
-        self.set_img(to_qt_img(self.canvas_img), label)
+        self.set_img(self.to_qt_img(self.canvas_img), label)
 
 
     def set_img(self, img, label):
@@ -178,11 +178,13 @@ class composite_gui(QMainWindow):
             x, y = cutout.pos().x(), cutout.pos().y()
             mask = cutout_img[:,:,3]
             mask = np.repeat(mask[:,:,np.newaxis], 3, axis=2)
-            print('mask: {}, tmp: {}, cutout: {}'.format(mask.shape, tmp[y:y+h,x:x+w,:].shape, cutout_img[:,:,:3].shape))
+            print('orignal shape: ', tmp.shape)
+            print('tmp: {}, x: {}, y: {}'.format(tmp[y:y+h,x:x+w,:].shape, x, y))
 
-            tmp = (1.0-mask) * tmp[y:y+h,x:x+w,:] + mask * cutout_img[:,:,:3]
+            tmp[y:y + h, x:x + w, :] = (1.0-mask) * tmp[y:y+h,x:x+w,:] + mask * cutout_img[:,:,:3]
 
         self.canvas_img = tmp
+        self.set_img(self.to_qt_img(self.canvas_img), self.canvas)
 
 
 if __name__ == '__main__':
