@@ -50,7 +50,7 @@ class composite_gui(QMainWindow):
         self.render_btn.clicked.connect(self.render_layers)
 
         self.save_btn = QPushButton("save", self)
-        self.save_btn.move(1380, self.render_btn.pos().y())
+        self.save_btn.move(1300, self.render_btn.pos().y())
         self.save_btn.clicked.connect(self.save_result)
 
         # # layouts
@@ -245,6 +245,7 @@ class composite_gui(QMainWindow):
             h,w = shadow.shape[0], shadow.shape[1]
             shadow_out = np.zeros((h,w,4))
             shadow_out[:,:,3:] = shadow
+            shadow_out[:,:,0] = shadow_out[:,:,1] = shadow_out[:,:,2] = 1.0 - shadow_out[:,:,3]
 
             self.cutout_layer[i].composite_shadow(shadow_out)
 

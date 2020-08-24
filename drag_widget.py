@@ -127,8 +127,13 @@ class drag_img(QLabel):
         alpha = np.repeat(alpha[:,:,np.newaxis], 3, axis=2)
 
         tmp = self.img.copy()
-        tmp[:,:,:3] = (1.0-alpha) * tmp[:,:,:3] + alpha * shadow_np[:,:,:3]
+        # tmp[:,:,:3] = (1.0-alpha) * tmp[:,:,:3] + alpha * shadow_np[:,:,:3]
+        # tmp[:,:,3] = tmp[:,:,3] + alpha[:,:,0]
+        tmp_mask = tmp[:,:,3:]
+        tmp_mask = np.repeat(tmp_mask, 3, axis=2)
+        tmp[:,:,:3] = (1.0 - tmp_mask) * shadow_np[:,:,:3] + tmp_mask * tmp[:,:,:3]
         tmp[:,:,3] = tmp[:,:,3] + alpha[:,:,0]
+
         tmp = np.clip(tmp, 0.0, 1.0)
         tmp = cv2.resize(tmp, (self.width(), self.height()))
         self.set_img(tmp)
