@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 class drag_img(QLabel):
-    def __init__(self, parent):
+    def __init__(self, parent=None):
         super().__init__(parent)
         self.resize_flag = False
         self.setScaledContents(True)
@@ -80,6 +80,14 @@ class drag_img(QLabel):
         h,w = self.height(), self.width()
         return cv2.resize(self.img, (w, h))
 
+    def get_render_img(self):
+        img = self.pixmap().toImage().convertToFormat(QImage.Format_RGBA8888)
+        w,h = self.width(), self.height()
+        ptr = img.bits()
+        ptr.setsize(h * w * 4)
+        ret = np.frombuffer(ptr, np.uint8).reshape((h,w,4))
+        return ret
+
     def set_img(self, np_img):
         h,w,_ = np_img.shape
         pixmap = QPixmap(self.to_qt_img(np_img))
@@ -109,3 +117,19 @@ class drag_img(QLabel):
         self.img = plt.imread(file)
         print('min: {}, max: {}'.format(np.min(self.img), np.max(self.img)), self.img.shape)
         self.set_img(self.img)
+
+    def composite_shadow(self, shadow_np):
+        """
+        input:
+            shadow_np: h x w x 4
+        """
+        alpha = shadow_np[:,:,3]
+        alpha = np.repeat(alpha[:,:,np.newaxis], 3, axis=2)
+
+        tmp = self.img.copy()
+        tmp[:,:,:3] = (1.0-alpha) * tmp[:,:,:3] + alpha * shadow_np[:,:,:3]
+        tmp[:,:,3] = tmp[:,:,3] + alpha[:,:,0]
+        tmp = np.clip(tmp, 0.0, 1.0)
+        tmp = cv2.resize(tmp, (self.width(), self.height()))
+        self.set_img(tmp)
+
