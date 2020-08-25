@@ -94,6 +94,7 @@ class composite_gui(QMainWindow):
     def dragMoveEvent(self, e):
         e.accept()
         self.cur_cutout.move(e.pos() - self.cur_cutout_offset)
+        self.render_layers()
 
     """ Utilities
     """
@@ -154,16 +155,11 @@ class composite_gui(QMainWindow):
         self.cur_cutout = self.get_cutout_label(id)
         self.cur_cutout_offset = offset_pos
 
-    def composite_layer_result(self, cur_canvas, cur_widget):
-        """
-            input:   canvas image, widget
-            outout:  alpha blending compsite result
-        """
-        tmp, cutout = cur_canvas.copy(), cur_widget
-        cutout_img = cutout.get_render_img()/255.0
+    def composite_region(self, cur_canvas, cur_widget):
+        tmp, cutout = cur_canvas, cur_widget
         canvas_h, canvas_w = tmp.shape[0], tmp.shape[1]
         x, y = cutout.pos().x() - self.canvas.pos().x(), cutout.pos().y() - self.canvas.pos().y()
-        h, w, _ = cutout_img.shape
+        h, w = cur_widget.height(), cur_widget.width()
 
         mask_x, mask_y = 0, 0
         mask_h, mask_w = h, w
@@ -185,17 +181,30 @@ class composite_gui(QMainWindow):
             tmp_y = y
 
         tmp_h, tmp_w = mask_h - mask_y, mask_w - mask_x
-        mask = cutout_img[mask_y: mask_h, mask_x:mask_w, 3]
-        mask = np.repeat(mask[:, :, np.newaxis], 3, axis=2)
-        print('original shape: ', tmp.shape)
-        print('tmp: {}, tmp x: {}, tmp y: {}, tmp w:{}, tmp h: {}'.format(
-            tmp[tmp_y:tmp_y + tmp_h, tmp_x:tmp_x + tmp_w, :].shape, tmp_x, tmp_y, tmp_w, tmp_h))
-        print(
-            'mask: {}, mask: x: {}, mask y: {}, mask w: {}, mask h: {}'.format(mask.shape, mask_x, mask_y, mask_w, mask_h))
+        canvas_region = (tmp_y, tmp_y + tmp_h, tmp_x, tmp_x + tmp_w)
+        widget_region = (mask_y, mask_y + mask_h, mask_x, mask_x + mask_w)
+        return canvas_region, widget_region
 
-        tmp[tmp_y:tmp_y + tmp_h, tmp_x:tmp_x + tmp_w, :] = (1.0 - mask) * tmp[tmp_y:tmp_y + tmp_h, tmp_x:tmp_x + tmp_w,
-                                                                          :] + mask * cutout_img[mask_y: mask_y + mask_h,
-                                                                                      mask_x:mask_x + mask_w, :3]
+
+    def composite_layer_result(self, cur_canvas, cur_widget, composite_img, composite_operator='lerp'):
+        """
+            input:   canvas image, widget
+            outout:  alpha blending compsite result
+        """
+        tmp, cutout = cur_canvas.copy(), cur_widget
+        cutout_img =  composite_img
+        canvas_region, widget_region = self.composite_region(cur_canvas, cur_widget)
+        if composite_operator == 'lerp':
+            mask = cutout_img[widget_region[0]:widget_region[1], widget_region[2]:widget_region[3], 3:]
+            mask = np.repeat(mask, 3, axis=2)
+
+            tmp[canvas_region[0]:canvas_region[1], canvas_region[2]:canvas_region[3], :] = \
+                (1.0 - mask) * tmp[canvas_region[0]:canvas_region[1], canvas_region[2]:canvas_region[3], :] + \
+                mask * cutout_img[widget_region[0]:widget_region[1], widget_region[2]:widget_region[3], :3]
+        else:
+            tmp[canvas_region[0]:canvas_region[1], canvas_region[2]:canvas_region[3], :] = \
+                tmp[canvas_region[0]:canvas_region[1], canvas_region[2]:canvas_region[3],:] * composite_img[widget_region[0]:widget_region[1], widget_region[2]:widget_region[3],:]
+
         return tmp
 
     def render_cutout(self, cur_canvas):
@@ -203,16 +212,16 @@ class composite_gui(QMainWindow):
         canvas_h, canvas_w,_ = tmp.shape
         # composite result with cutout
         for cutout in self.cutout_layer:
-            tmp = self.composite_layer_result(tmp, cutout)
+            tmp = self.composite_layer_result(tmp, cutout, cutout.get_img())
 
         return tmp
 
     def render_shadow(self, cur_canvas):
         """
-            Render shadow to cutout layers
+            Render shadow to canvas
         """
         if len(self.cutout_layer) == 0:
-            return
+            return cur_canvas
 
         # h x w
         ibl_np = self.ibl.get_ibl_numpy()
@@ -238,16 +247,20 @@ class composite_gui(QMainWindow):
         print('mask input: {}, {}, ibl: {}, {}, {}'.format(np.min(mask_input), np.max(mask_input), np.min(ibl_np), np.max(ibl_np), np.sum(ibl_np)))
         shadow_pred = evaluation.net_render_np(mask_input, ibl_np)
         print('shadow pred: {}, {}'.format(np.min(shadow_pred), np.max(shadow_pred)))
+        tmp = cur_canvas.copy()
         for i, shadow in enumerate(shadow_pred):
             shadow = np.transpose(shadow, (1,2,0))
             print('shadow shape: ', shadow.shape)
-            cv2.normalize(shadow[:,:,0], shadow[:,:,0], 0.0,1.0,cv2.NORM_MINMAX)
+            cv2.normalize(shadow[:,:,0], shadow[:,:,0], 0.0, 1.0, cv2.NORM_MINMAX)
             h,w = shadow.shape[0], shadow.shape[1]
-            shadow_out = np.zeros((h,w,4))
-            shadow_out[:,:,3:] = shadow
-            shadow_out[:,:,0] = shadow_out[:,:,1] = shadow_out[:,:,2] = 1.0 - shadow_out[:,:,3]
+            shadow_out = np.zeros((h,w,3))
+            shadow_out[:,:,0] = shadow_out[:,:,1] = shadow_out[:,:,2] = 1.0 - shadow[:,:,0]
+            shadow_out = cv2.resize(shadow_out, (self.cutout_layer[i].width(), self.cutout_layer[i].height()))
 
-            self.cutout_layer[i].composite_shadow(shadow_out)
+            # composite shadow with canvas
+            tmp = self.composite_layer_result(tmp, self.cutout_layer[i], shadow_out, 'prod')
+
+        return tmp
 
     #################### Actions ##############################
     @pyqtSlot()
@@ -261,21 +274,24 @@ class composite_gui(QMainWindow):
         cutout_file = self.load_file()
         print('load file', cutout_file)
         self.add_cutout(cutout_file)
+        self.render_layers()
 
     @pyqtSlot()
     def render_layers(self):
         print('canvas shape: ', self.canvas_img.shape)
 
-        self.render_shadow(self.canvas_img)  # render to cutout layers
-        # self.canvas_img = self.render_cutout(self.canvas_img) # composite cutout with canvas
-        # self.set_img(self.to_qt_img(self.canvas_img), self.canvas)
+        shadow_canvas = self.render_shadow(self.canvas_img)  # render to cutout layers
+        shadow_canvas = self.render_cutout(shadow_canvas) # composite cutout with canvas
+        self.set_img(self.to_qt_img(shadow_canvas), self.canvas)
+        # todo, make drag_widget invisible
+        return shadow_canvas
 
     @pyqtSlot()
     def save_result(self):
         # get save file name
         dir_path = os.path.dirname(os.path.realpath(__file__))
         save_fname = QFileDialog.getSaveFileName(self, 'Open file', os.path.join(dir_path,'output'))
-        out_img = self.render_cutout(self.canvas_img)
+        out_img = self.render_layers()
 
         if cv2.imwrite(save_fname[0], out_img):
             print('file {} saved succeed'.format(save_fname[0]))

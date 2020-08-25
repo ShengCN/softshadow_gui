@@ -22,7 +22,8 @@ parser.add_argument('-f', '--file', type=str, help='input model file')
 parser.add_argument('-m', '--mask', type=str, help='mask file')
 parser.add_argument('-i', '--ibl', type=str, help='ibl file')
 parser.add_argument('-o', '--output', type=str, help='output folder')
-parser.add_argument('-w', '--weight', type=str, help='weight of current model', default='weights/human_gui_22-August-11-56-AM.pt')
+parser.add_argument('-w', '--weight', type=str, help='weight of current model',
+                    default='weights/human_gui_25-August-12-04-AM.pt')
 parser.add_argument('-v', '--verbose', action='store_true', help='output file name')
 
 options = parser.parse_args()
