@@ -57,9 +57,11 @@ class composite_gui(QMainWindow):
 
         self.size_label = QLabel('size', self)
         self.size_slider = QSlider(Qt.Horizontal)
+        self.size_slider.valueChanged.connect(self.shadow_size_change)
 
         self.scale_label = QLabel('scale', self)
         self.scale_slider = QSlider(Qt.Horizontal)
+        self.scale_slider.valueChanged.connect(self.shadow_scale_change)
 
         # buttons
         self.save_btn = QPushButton("save", self)
@@ -275,10 +277,10 @@ class composite_gui(QMainWindow):
 
         # before passed into net, some modification needs to be done on ibl
         ibl_np = cv2.flip(ibl_np, 0)
+
+        ibl_np = np.transpose(np.expand_dims(cv2.resize(ibl_np, (32, 16), cv2.INTER_LINEAR), axis=2), (2,0,1))
         if np.sum(ibl_np) > 1e-3:
             ibl_np = ibl_np * 30.0 / np.sum(ibl_np)
-
-        ibl_np = np.transpose(np.expand_dims(cv2.resize(ibl_np, (32, 16)), axis=2), (2,0,1))
         ibl_np = np.repeat(ibl_np[np.newaxis,:,:,:], len(self.cutout_layer), axis=0)
 
         # convert to predict format
@@ -310,7 +312,6 @@ class composite_gui(QMainWindow):
             xy, wh = (self.cutout_layer[i].pos().x(), self.cutout_layer[i].pos().y()), (self.cutout_layer[i].width(), self.cutout_layer[i].height())
 
             tmp = self.composite_layer_result(tmp, xy, wh, shadow_out, 'prod')
-            plt.imsave('test_shadow.png', shadow_out)
 
         return tmp
 
@@ -379,6 +380,14 @@ class composite_gui(QMainWindow):
         self.cur_shadow_itensity_fract = self.shadow_intensity_slider.value()/99.0
         self.render_layers()
 
+    @pyqtSlot()
+    def shadow_scale_change(self):
+        pass
+
+    @pyqtSlot()
+    def shadow_size_change(self):
+        cur_scale_fract = self.size_slider.value()/99.0
+        self.ibl.set_cur_scale(cur_scale_fract)
 
 
 if __name__ == '__main__':
