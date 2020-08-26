@@ -25,8 +25,8 @@ class ibl_widget(QLabel):
         self.ibl_img = np.zeros((256, 512, 3))
         self.set_img(self.ibl_img)
 
-        self.ibls = [ibl(pos=(0.5, 0.5))]
-        self.update_ibl()
+        self.ibls = []
+        # self.update_ibl()
         self.cur_ibl = 0
         self.setFixedSize(512,256)
 
@@ -69,9 +69,20 @@ class ibl_widget(QLabel):
         self.update_ibl_event(e)
 
     def update_ibl_event(self, e):
+        if len(self.ibls) == 0:
+            return
+
         x,y = e.pos().x() / self.width(), e.pos().y() / self.height()
         self.ibls[self.cur_ibl].pos = (x,1.0 - y)
         self.update_ibl()
+
+    def add_light(self):
+        self.ibls.append(ibl((0.5,0.5)))
+        self.parent_handle.update_list(self.cur_ibl)
+        self.update_ibl()
+
+    def get_light_num(self):
+        return len(self.ibls)
 
     def set_img(self, np_img):
         pixmap = QPixmap(self.to_qt_img(np_img))
