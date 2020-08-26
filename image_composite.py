@@ -52,6 +52,8 @@ class composite_gui(QMainWindow):
         # sliders
         self.shadow_intensity_label = QLabel('intensity', self)
         self.shadow_intensity_slider = QSlider(Qt.Horizontal)
+        self.shadow_intensity_slider.valueChanged.connect(self.shadow_intensity_change)
+        self.shadow_intensity_slider.setValue(99)
 
         self.size_label = QLabel('size', self)
         self.size_slider = QSlider(Qt.Horizontal)
@@ -299,7 +301,7 @@ class composite_gui(QMainWindow):
             # print('shadow shape: ', shadow.shape)
             cv2.normalize(shadow[:,:,0], shadow[:,:,0], 0.0, 1.0, cv2.NORM_MINMAX)
             h,w = shadow.shape[0], shadow.shape[1]
-            shadow = self.soft_shadow_boundary(shadow)
+            shadow = self.soft_shadow_boundary(shadow) * self.cur_shadow_itensity_fract
             shadow_out = np.zeros((h,w,3))
             shadow_out[:,:,0] = shadow_out[:,:,1] = shadow_out[:,:,2] = 1.0 - shadow[:,:,0]
             shadow_out = cv2.resize(shadow_out, (self.cutout_layer[i].width(), self.cutout_layer[i].height()))
@@ -371,6 +373,12 @@ class composite_gui(QMainWindow):
             self.light_list.addItem('light {}'.format(i))
 
         self.light_list.setCurrentRow(cur_ibl)
+
+    @pyqtSlot()
+    def shadow_intensity_change(self):
+        self.cur_shadow_itensity_fract = self.shadow_intensity_slider.value()/99.0
+        self.render_layers()
+
 
 
 if __name__ == '__main__':
