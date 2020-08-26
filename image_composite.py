@@ -24,7 +24,7 @@ class composite_gui(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle(self.title)
-        self.setGeometry(self.left,self.top, self.width, self.height)
+        # self.setGeometry(self.left,self.top, self.width, self.height)
         # self.setFixedSize(self.width, self.height)
         self.setAcceptDrops(True)
         self.set_menu()
@@ -135,6 +135,7 @@ class composite_gui(QMainWindow):
     def set_img(self, img, label):
         pixmap = QPixmap(img)
         label.setPixmap(pixmap)
+        w,h = img.width(), img.height()
         label.adjustSize()
 
     def load_file(self):
@@ -207,12 +208,12 @@ class composite_gui(QMainWindow):
         tmp = cur_canvas
         cutout_img =  composite_img
         canvas_region, widget_region = self.composite_region(cur_canvas, xy, wh)
-        print('canvas region: {}, h: {}, w: {}, widget region: {}, h: {}, w: {}'.format(canvas_region,
-                                                                                        canvas_region[1],
-                                                                                        cur_canvas.shape[1],
-                                                                                        widget_region,
-                                                                                        wh[1],
-                                                                                        wh[0]))
+        # print('canvas region: {}, h: {}, w: {}, widget region: {}, h: {}, w: {}'.format(canvas_region,
+        #                                                                                 canvas_region[1],
+        #                                                                                 cur_canvas.shape[1],
+        #                                                                                 widget_region,
+        #                                                                                 wh[1],
+        #                                                                                 wh[0]))
         if composite_operator == 'lerp':
             mask = cutout_img[widget_region[0]:widget_region[1], widget_region[2]:widget_region[3], 3:]
             mask = np.repeat(mask, 3, axis=2)
