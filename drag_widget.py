@@ -91,7 +91,9 @@ class drag_img(QLabel):
 
     def set_img(self, np_img):
         h,w,_ = np_img.shape
-        pixmap = QPixmap(self.to_qt_img(np_img))
+        tmp = np_img.copy()
+        tmp[:,:,3] = 0.0
+        pixmap = QPixmap(self.to_qt_img(tmp))
         self.setPixmap(pixmap)
         self.setFixedSize(w,h)
         # self.adjustSize()

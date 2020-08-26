@@ -38,7 +38,24 @@ class ibl_widget(QLabel):
         return QImage(np_img.data, w, h, QImage.Format_RGB888)
 
     def get_ibl_numpy(self):
-        return self.ibl_img[:,:,0]
+        num = len(self.ibls)
+        gs = ig.Composite(operator=np.add,
+                          generators=[ig.Gaussian(
+                              size=self.ibls[i].radius,
+                              scale=self.ibls[i].scale,
+                              x=self.ibls[i].pos[0] - 0.5,
+                              y=self.ibls[i].pos[1] * 0.3 + 0.2,
+                              aspect_ratio=1.0,
+                          ) for i in range(num)],
+                          xdensity=512)
+
+        # rotate by 180 degree
+        tmp = gs()
+        h,w = tmp.shape[0], tmp.shape[1]
+
+        ret = tmp.copy()
+        ret[:,:w//2], ret[:,w//2:] = tmp[:,w//2:], tmp[:,:w//2]
+        return ret
 
     def mousePressEvent(self, e):
         self.update_ibl_event(e)
@@ -66,10 +83,11 @@ class ibl_widget(QLabel):
                                     size=self.ibls[i].radius,
                                     scale=self.ibls[i].scale,
                                     x=self.ibls[i].pos[0] - 0.5,
-                                    y=self.ibls[i].pos[1] - 0.5,
+                                    y=self.ibls[i].pos[1] -0.5,
                                     aspect_ratio=1.0,
                                     ) for i in range(num)],
                             xdensity=512)
+
         self.ibl_img = np.repeat(gs()[:,:,np.newaxis], 3, axis=2)
         self.set_img(self.ibl_img)
         self.parent().render_layers()

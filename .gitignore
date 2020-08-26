@@ -2,3 +2,6 @@ __pycache_/*
 __pycache__/
 .idea/
 weights/
+.ipynb_checkpoints/*
+.ipynb_checkpoints/
+*.ipynb
