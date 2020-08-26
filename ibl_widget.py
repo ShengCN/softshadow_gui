@@ -109,7 +109,7 @@ class ibl_widget(QLabel):
         if (len(self.ibls)) == 0:
             return
 
-        min_value = 0.0001
-        max_value = 1.0
+        min_value = 0.008
+        max_value = 0.1
         self.ibls[self.cur_ibl].radius = (1.0-fract) * min_value + fract * max_value
         self.update_ibl()

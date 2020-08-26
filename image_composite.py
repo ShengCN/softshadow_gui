@@ -276,6 +276,7 @@ class composite_gui(QMainWindow):
         ibl_np = self.ibl.get_ibl_numpy()
 
         # before passed into net, some modification needs to be done on ibl
+        ibl_np = ibl_np[:80, :]
         ibl_np = cv2.flip(ibl_np, 0)
 
         ibl_np = np.transpose(np.expand_dims(cv2.resize(ibl_np, (32, 16), cv2.INTER_LINEAR), axis=2), (2,0,1))
