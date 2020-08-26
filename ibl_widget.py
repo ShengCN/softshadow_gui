@@ -19,6 +19,7 @@ class ibl():
 class ibl_widget(QLabel):
     def __init__(self, parent):
         super().__init__(parent)
+        self.parent_handle = parent
 
         # initialize ibl
         self.ibl_img = np.zeros((256, 512, 3))
@@ -27,6 +28,7 @@ class ibl_widget(QLabel):
         self.ibls = [ibl(pos=(0.5, 0.5))]
         self.update_ibl()
         self.cur_ibl = 0
+        self.setFixedSize(512,256)
 
     def to_qt_img(self, np_img):
         if np_img.dtype != np.uint8:
@@ -90,4 +92,4 @@ class ibl_widget(QLabel):
 
         self.ibl_img = np.repeat(gs()[:,:,np.newaxis], 3, axis=2)
         self.set_img(self.ibl_img)
-        self.parent().render_layers()
+        self.parent_handle.render_layers()

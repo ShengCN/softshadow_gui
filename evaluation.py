@@ -53,7 +53,7 @@ def net_render_np(mask_np, ibl_np):
     mask, ibl = torch.Tensor(mask_np), torch.Tensor(ibl_np)
     with torch.no_grad():
         I_s, L_t = mask.to(device), ibl.to(device)
-        print('I_s: {}, L_t: {}'.format(I_s.shape, L_t.shape))
+        # print('I_s: {}, L_t: {}'.format(I_s.shape, L_t.shape))
         predicted_img, predicted_src_light = model(I_s, L_t)
 
     print('net predict finished, time: {}s'.format(time.time() -s))

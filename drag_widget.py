@@ -12,6 +12,7 @@ import cv2
 class drag_img(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent_handle = parent
         self.resize_flag = False
         self.setScaledContents(True)
 
@@ -36,7 +37,7 @@ class drag_img(QLabel):
                 np_img = cv2.resize(self.img, (w, h))
                 # self.set_img(np_img)
                 self.setFixedSize(w,h)
-                self.parent().render_layers()
+                self.parent_handle.render_layers()
 
         elif e.buttons() == Qt.RightButton:
             mimeData = QMimeData()
@@ -57,7 +58,7 @@ class drag_img(QLabel):
                 self.resize_flag = True
 
         if e.button() == Qt.RightButton:
-            self.parent().set_cur_label(self.id, e.pos() - self.rect().topLeft())
+            self.parent_handle.set_cur_label(self.id, e.pos() - self.rect().topLeft())
 
     def mouseReleaseEvent(self, e):
         self.resize_flag = False
