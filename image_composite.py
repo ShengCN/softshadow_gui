@@ -46,6 +46,18 @@ class composite_gui(QMainWindow):
         # self.read_img('imgs/x.jpg', self.canvas, (1024, 1024))
 
         self.ibl = ibl_widget(self)
+        self.light_list = QListWidget(self)
+        self.light_list.itemClicked.connect(self.light_item_clicked)
+
+        # sliders
+        self.shadow_intensity_label = QLabel('intensity', self)
+        self.shadow_intensity_slider = QSlider(Qt.Horizontal)
+
+        self.size_label = QLabel('size', self)
+        self.size_slider = QSlider(Qt.Horizontal)
+
+        self.scale_label = QLabel('scale', self)
+        self.scale_slider = QSlider(Qt.Horizontal)
 
         # buttons
         self.save_btn = QPushButton("save", self)
@@ -61,6 +73,13 @@ class composite_gui(QMainWindow):
         control_group = QGroupBox('control', self)
         control_layout = QtWidgets.QVBoxLayout()
         control_layout.addWidget(self.ibl)
+        control_layout.addWidget(self.light_list)
+        control_layout.addWidget(self.shadow_intensity_label)
+        control_layout.addWidget(self.shadow_intensity_slider)
+        control_layout.addWidget(self.size_label)
+        control_layout.addWidget(self.size_slider)
+        control_layout.addWidget(self.scale_label)
+        control_layout.addWidget(self.scale_slider)
         control_layout.addWidget(self.save_btn)
         control_group.setLayout(control_layout)
 
@@ -76,7 +95,11 @@ class composite_gui(QMainWindow):
         self.soft_mask = cv2.GaussianBlur(mask, (padding * 4 + 1, padding * 4 + 1), 0)
         self.soft_mask = self.soft_mask[:,:,np.newaxis]
 
+        self.init_state()
         self.show()
+
+    def init_state(self):
+        self.add_light()
 
     def set_menu(self):
         main_menu = self.menuBar()
@@ -330,6 +353,25 @@ class composite_gui(QMainWindow):
             print('file {} saved succeed'.format(save_fname[0]))
         else:
             print('file {} save fail'.format(save_fname[0]))
+
+    @pyqtSlot()
+    def light_item_clicked(self, item):
+        # self.ibl.set_cur_ibl()
+        print(self.light_list.currentRow())
+
+    @pyqtSlot()
+    def add_light(self):
+        self.ibl.add_light()
+
+    @pyqtSlot()
+    def update_list(self, cur_ibl):
+        self.light_list.clear()
+        light_num = self.ibl.get_light_num()
+        for i in range(light_num):
+            self.light_list.addItem('light {}'.format(i))
+
+        self.light_list.setCurrentRow(cur_ibl)
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
