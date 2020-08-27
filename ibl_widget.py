@@ -60,7 +60,15 @@ class ibl_widget(QLabel):
         return ret
 
     def mousePressEvent(self, e):
-        self.update_ibl_event(e)
+        if e.buttons() == Qt.LeftButton:
+            print('current ibl: ', self.cur_ibl)
+            self.update_ibl_event(e)
+        elif e.buttons() == Qt.RightButton:
+            # delete current ibl
+            self.ibls = self.ibls[:self.cur_ibl] + self.ibls[self.cur_ibl+1:]
+            self.cur_ibl = min(self.cur_ibl, len(self.ibls) - 1)
+            self.parent_handle.update_list(self.cur_ibl)
+            self.update_ibl()
 
     def mouseReleaseEvent(self, e):
         pass
@@ -81,8 +89,14 @@ class ibl_widget(QLabel):
         self.parent_handle.update_list(self.cur_ibl)
         self.update_ibl()
 
+    def set_cur_light(self, cur_light):
+        self.cur_ibl = cur_light
+
     def get_light_num(self):
         return len(self.ibls)
+
+    def get_cur_light_state(self):
+        return self.ibls[self.cur_ibl].radius, self.ibls[self.cur_ibl].scale
 
     def set_img(self, np_img):
         pixmap = QPixmap(self.to_qt_img(np_img))
@@ -91,6 +105,11 @@ class ibl_widget(QLabel):
 
     def update_ibl(self):
         num = len(self.ibls)
+        if num == 0:
+            black = np.zeros((256,512,3))
+            self.set_img(black)
+            return
+
         gs = ig.Composite(operator=np.add,
                         generators=[ig.Gaussian(
                                     size=self.ibls[i].radius,
@@ -105,11 +124,9 @@ class ibl_widget(QLabel):
         self.set_img(self.ibl_img)
         self.parent_handle.render_layers()
 
-    def set_cur_scale(self, fract):
+    def set_cur_size(self, radius):
         if (len(self.ibls)) == 0:
             return
 
-        min_value = 0.008
-        max_value = 0.1
-        self.ibls[self.cur_ibl].radius = (1.0-fract) * min_value + fract * max_value
+        self.ibls[self.cur_ibl].radius = radius
         self.update_ibl()

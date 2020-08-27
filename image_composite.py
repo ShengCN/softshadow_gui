@@ -92,6 +92,8 @@ class composite_gui(QMainWindow):
         grid.addWidget(control_group, 0, 1)
         wid.setLayout(grid)
 
+        self.setFocusPolicy(Qt.StrongFocus)
+
         # init smooth mask
         h,w = 256, 256
         mask, padding = np.zeros((h, w, 1)), 5
@@ -207,9 +209,9 @@ class composite_gui(QMainWindow):
         com_xxyy[0] = min(canvas_xxyy[0], xxyy[0])
         com_xxyy[1] = min(canvas_xxyy[1], xxyy[1])
 
-        print('canvas xy: {}, xy: {}'.format(canvas_xy, xy))
-        print('canvas xxyy: {}, xxyy: {}'.format(canvas_xxyy, xxyy))
-        print('com xy: {}, com xxyy: {}'.format(com_xy, com_xxyy))
+        # print('canvas xy: {}, xy: {}'.format(canvas_xy, xy))
+        # print('canvas xxyy: {}, xxyy: {}'.format(canvas_xxyy, xxyy))
+        # print('com xy: {}, com xxyy: {}'.format(com_xy, com_xxyy))
 
         canvas_region = (com_xy[1] - canvas_xy[1], com_xxyy[1] - canvas_xy[1], com_xy[0] - canvas_xy[0], com_xxyy[0] - canvas_xy[0])
         widget_region = (com_xy[1] - xy[1], com_xxyy[1] - xy[1], com_xy[0] - xy[0], com_xxyy[0] - xy[0])
@@ -228,12 +230,12 @@ class composite_gui(QMainWindow):
                                                               self.canvas.height()],
                                                              xy,
                                                              wh)
-        print('canvas region: {}, h: {}, w: {}, widget region: {}, h: {}, w: {}'.format(canvas_region,
-                                                                                        canvas_region[1],
-                                                                                        cur_canvas.shape[1],
-                                                                                        widget_region,
-                                                                                        wh[1],
-                                                                                        wh[0]))
+        # print('canvas region: {}, h: {}, w: {}, widget region: {}, h: {}, w: {}'.format(canvas_region,
+        #                                                                                 canvas_region[1],
+        #                                                                                 cur_canvas.shape[1],
+        #                                                                                 widget_region,
+        #                                                                                 wh[1],
+        #                                                                                 wh[0]))
         if composite_operator == 'lerp':
             mask = cutout_img[widget_region[0]:widget_region[1], widget_region[2]:widget_region[3], 3:]
             mask = np.repeat(mask, 3, axis=2)
@@ -312,6 +314,11 @@ class composite_gui(QMainWindow):
     def soft_shadow_boundary(self, shadow_img):
         return np.clip(np.multiply(self.soft_mask, shadow_img), 0.0, 1.0)
 
+    def keyPressEvent(self, event):
+        print(event.key())
+        if event.key() == Qt.Key_A:
+            print('Pressed A')
+            self.add_light()
 
     #################### Actions ##############################
     @pyqtSlot()
@@ -323,6 +330,8 @@ class composite_gui(QMainWindow):
     @pyqtSlot()
     def load_cutout(self):
         cutout_file = self.load_file()
+        if not os.path.exists(cutout_file):
+            return
         print('load file', cutout_file)
         self.add_cutout(cutout_file)
         self.render_layers()
@@ -330,7 +339,7 @@ class composite_gui(QMainWindow):
     @pyqtSlot()
     def render_layers(self):
         if len(self.cutout_layer) == 0:
-            return
+            return self.canvas_img.copy()
 
         # print('canvas shape: ', self.canvas_img.shape)
 
@@ -344,30 +353,46 @@ class composite_gui(QMainWindow):
         # get save file name
         dir_path = os.path.dirname(os.path.realpath(__file__))
         save_fname = QFileDialog.getSaveFileName(self, 'Open file', os.path.join(dir_path,'output'))
-        out_img = self.render_layers()
+        print(save_fname)
 
+        out_img = self.render_layers()
         if cv2.imwrite(save_fname[0], out_img*255.0):
             print('file {} saved succeed'.format(save_fname[0]))
         else:
             print('file {} save fail'.format(save_fname[0]))
 
-    @pyqtSlot()
     def light_item_clicked(self, item):
         # self.ibl.set_cur_ibl()
-        print(self.light_list.currentRow())
+        cur_ibl = self.light_list.currentRow()
+        self.update_list(cur_ibl)
 
     @pyqtSlot()
     def add_light(self):
         self.ibl.add_light()
+        self.update_list(self.ibl.get_light_num()-1)
 
     @pyqtSlot()
     def update_list(self, cur_ibl):
         self.light_list.clear()
         light_num = self.ibl.get_light_num()
         for i in range(light_num):
-            self.light_list.addItem('light {}'.format(i))
+            self.light_list.insertItem(i, 'light {}'.format(i))
 
         self.light_list.setCurrentRow(cur_ibl)
+        self.ibl.set_cur_light(cur_ibl)
+
+        if cur_ibl>=0:
+            radius, scale = self.ibl.get_cur_light_state()
+            self.set_slider_state(radius, scale)
+        else:
+            self.set_slider_state(0.008, 0)
+
+    def set_slider_state(self, radius, scale):
+        size_value = (radius-0.008)/(0.1-0.008)*99.0
+        self.size_slider.setValue(int(size_value))
+
+        scale_value = scale * 99.0
+        self.scale_slider.setValue(scale_value)
 
     @pyqtSlot()
     def shadow_intensity_change(self):
@@ -380,8 +405,11 @@ class composite_gui(QMainWindow):
 
     @pyqtSlot()
     def shadow_size_change(self):
-        cur_scale_fract = self.size_slider.value()/99.0
-        self.ibl.set_cur_scale(cur_scale_fract)
+        fract = self.size_slider.value()/99.0
+        min_value = 0.008
+        max_value = 0.1
+        radius = (1.0-fract) * min_value + fract * max_value
+        self.ibl.set_cur_size(radius)
 
 
 if __name__ == '__main__':
