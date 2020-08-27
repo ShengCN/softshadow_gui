@@ -12,6 +12,8 @@ import evaluation
 from drag_widget import drag_img
 from ibl_widget import ibl_widget
 
+SIZE_MIN, SIZE_MAX = 0.1, 1.0
+
 class composite_gui(QMainWindow):
     def __init__(self):
         super(composite_gui, self).__init__()
@@ -106,6 +108,7 @@ class composite_gui(QMainWindow):
 
     def init_state(self):
         self.add_light()
+        self.show_shadow = True
 
     def set_menu(self):
         main_menu = self.menuBar()
@@ -264,7 +267,7 @@ class composite_gui(QMainWindow):
         """
             Render shadow to canvas
         """
-        if len(self.cutout_layer) == 0:
+        if len(self.cutout_layer) == 0 or not self.show_shadow:
             return cur_canvas
 
         # h x w
@@ -315,10 +318,13 @@ class composite_gui(QMainWindow):
         return np.clip(np.multiply(self.soft_mask, shadow_img), 0.0, 1.0)
 
     def keyPressEvent(self, event):
-        print(event.key())
         if event.key() == Qt.Key_A:
             print('Pressed A')
             self.add_light()
+        if event.key() == Qt.Key_Space:
+            self.show_shadow = self.show_shadow ^ True
+            print('press space, toggle show shadow ', self.show_shadow)
+            self.render_layers()
 
     #################### Actions ##############################
     @pyqtSlot()
@@ -355,8 +361,20 @@ class composite_gui(QMainWindow):
         save_fname = QFileDialog.getSaveFileName(self, 'Open file', os.path.join(dir_path,'output'))
         print(save_fname)
 
+        # layer results
         out_img = self.render_layers()
         if cv2.imwrite(save_fname[0], out_img*255.0):
+            print('file {} saved succeed'.format(save_fname[0]))
+        else:
+            print('file {} save fail'.format(save_fname[0]))
+
+        # shadow layers
+        white_back = np.ones(self.canvas_img.shape)
+        shadow_layer = self.render_shadow(white_back)
+
+        shadow_out_fanme = 'shadow_' + os.path.basename(save_fname[0])
+
+        if cv2.imwrite(os.path.join(os.path.dirname(save_fname[0]), shadow_out_fanme), shadow_layer*255.0):
             print('file {} saved succeed'.format(save_fname[0]))
         else:
             print('file {} save fail'.format(save_fname[0]))
@@ -388,7 +406,7 @@ class composite_gui(QMainWindow):
             self.set_slider_state(0.008, 0)
 
     def set_slider_state(self, radius, scale):
-        size_value = (radius-0.008)/(0.1-0.008)*99.0
+        size_value = (radius-SIZE_MIN)/(1-SIZE_MIN)*99.0
         self.size_slider.setValue(int(size_value))
 
         scale_value = scale * 99.0
@@ -407,11 +425,8 @@ class composite_gui(QMainWindow):
     @pyqtSlot()
     def shadow_size_change(self):
         fract = self.size_slider.value()/99.0
-        min_value = 0.008
-        max_value = 0.1
-        radius = (1.0-fract) * min_value + fract * max_value
+        radius = (1.0-fract) * SIZE_MIN + fract * SIZE_MAX
         self.ibl.set_cur_size(radius)
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
