@@ -196,39 +196,24 @@ class composite_gui(QMainWindow):
         self.cur_cutout = self.get_cutout_label(id)
         self.cur_cutout_offset = offset_pos
 
-    def composite_region(self, cur_canvas, xy, wh):
-        tmp = cur_canvas
-        canvas_h, canvas_w = tmp.shape[0], tmp.shape[1]
+    def composite_region(self, canvas_xy, canvas_wh, xy, wh):
+        canvas_xxyy = [canvas_xy[0] + canvas_wh[0], canvas_xy[1] + canvas_wh[1]]
+        xxyy = [xy[0] + wh[0], xy[1] + wh[1]]
 
-        x, y = xy[0] - self.canvas.pos().x(), xy[1] - self.canvas.pos().y()
-        w, h = wh[0], wh[1]
+        # com_xy, com_xxyy = canvas_xy, canvas_xxyy
+        com_xy, com_xxyy = [canvas_xy[0], canvas_xy[1]], [canvas_xy[0], canvas_xy[1]]
+        com_xy[0] = max(canvas_xy[0], xy[0])
+        com_xy[1] = max(canvas_xy[1], xy[1])
+        com_xxyy[0] = min(canvas_xxyy[0], xxyy[0])
+        com_xxyy[1] = min(canvas_xxyy[1], xxyy[1])
 
-        mask_x, mask_y = 0, 0
-        mask_h, mask_w = h, w
-        tmp_x, tmp_y = x, y
+        print('canvas xy: {}, xy: {}'.format(canvas_xy, xy))
+        print('canvas xxyy: {}, xxyy: {}'.format(canvas_xxyy, xxyy))
+        print('com xy: {}, com xxyy: {}'.format(com_xy, com_xxyy))
 
-        # boundary case
-        if x < 0:
-            tmp_x, mask_x = 0, -x
-            mask_w = mask_w - mask_x
-
-        if y < 0:
-            tmp_y, mask_y = 0, -y
-            mask_h = mask_h - mask_y
-
-        if x + w > canvas_w:
-            mask_w = canvas_w - x
-            tmp_x = x
-
-        if y + h > canvas_h:
-            mask_h = canvas_h - y
-            tmp_y = y
-
-        tmp_h, tmp_w = mask_h, mask_w
-        canvas_region = (tmp_y, tmp_y + tmp_h, tmp_x, tmp_x + tmp_w)
-        widget_region = (mask_y, mask_y + mask_h, mask_x, mask_x + mask_w)
+        canvas_region = (com_xy[1] - canvas_xy[1], com_xxyy[1] - canvas_xy[1], com_xy[0] - canvas_xy[0], com_xxyy[0] - canvas_xy[0])
+        widget_region = (com_xy[1] - xy[1], com_xxyy[1] - xy[1], com_xy[0] - xy[0], com_xxyy[0] - xy[0])
         return canvas_region, widget_region
-
 
     def composite_layer_result(self, cur_canvas, xy, wh, composite_img, composite_operator='lerp'):
         """
@@ -237,13 +222,18 @@ class composite_gui(QMainWindow):
         """
         tmp = cur_canvas
         cutout_img =  composite_img
-        canvas_region, widget_region = self.composite_region(cur_canvas, xy, wh)
-        # print('canvas region: {}, h: {}, w: {}, widget region: {}, h: {}, w: {}'.format(canvas_region,
-        #                                                                                 canvas_region[1],
-        #                                                                                 cur_canvas.shape[1],
-        #                                                                                 widget_region,
-        #                                                                                 wh[1],
-        #                                                                                 wh[0]))
+        canvas_region, widget_region = self.composite_region([self.canvas.pos().x(),
+                                                              self.canvas.pos().y()],
+                                                             [self.canvas.width(),
+                                                              self.canvas.height()],
+                                                             xy,
+                                                             wh)
+        print('canvas region: {}, h: {}, w: {}, widget region: {}, h: {}, w: {}'.format(canvas_region,
+                                                                                        canvas_region[1],
+                                                                                        cur_canvas.shape[1],
+                                                                                        widget_region,
+                                                                                        wh[1],
+                                                                                        wh[0]))
         if composite_operator == 'lerp':
             mask = cutout_img[widget_region[0]:widget_region[1], widget_region[2]:widget_region[3], 3:]
             mask = np.repeat(mask, 3, axis=2)
