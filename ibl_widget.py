@@ -11,7 +11,7 @@ import cv2
 import imagen as ig
 
 class ibl():
-    def __init__(self, pos=(0,0), radius=0.05, scale=1.0):
+    def __init__(self, pos=(0,0), radius=0.09, scale=1.0):
         self.pos = pos
         self.radius = radius
         self.scale = scale
