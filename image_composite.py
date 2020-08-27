@@ -401,7 +401,8 @@ class composite_gui(QMainWindow):
 
     @pyqtSlot()
     def shadow_scale_change(self):
-        pass
+        fract = self.scale_slider.value()/99.0
+        self.ibl.set_cur_scale(fract)
 
     @pyqtSlot()
     def shadow_size_change(self):

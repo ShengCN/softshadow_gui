@@ -11,7 +11,7 @@ import cv2
 import imagen as ig
 
 class ibl():
-    def __init__(self, pos=(0,0), radius=0.01, scale=1.0):
+    def __init__(self, pos=(0,0), radius=0.05, scale=1.0):
         self.pos = pos
         self.radius = radius
         self.scale = scale
@@ -129,4 +129,11 @@ class ibl_widget(QLabel):
             return
 
         self.ibls[self.cur_ibl].radius = radius
+        self.update_ibl()
+
+    def set_cur_scale(self, scale):
+        if (len(self.ibls)) == 0:
+            return
+
+        self.ibls[self.cur_ibl].scale = scale
         self.update_ibl()
