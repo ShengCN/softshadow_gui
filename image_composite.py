@@ -138,6 +138,7 @@ class composite_gui(QMainWindow):
             np_img = np_img * 255.0
             np_img = np_img.astype(np.uint8)
 
+
         h, w, c = np_img.shape
         # bytesPerLine = 3 * w
         return QImage(np_img.data, w, h, QImage.Format_RGB888)
@@ -152,9 +153,11 @@ class composite_gui(QMainWindow):
             img = np.repeat(img[:,:,np.newaxis], 3, axis=2)
         h,w,_ = img.shape
 
-        self.canvas_img = img
+        self.canvas_img = img[:,:,:3]
         if size is not None:
-            self.canvas_img = cv2.resize(img, (size[0], size[1]))/255.0
+            self.canvas_img = cv2.resize(img, (size[0], size[1]))
+            if self.canvas_img.dtype == np.uint8:
+                self.canvas_img = self.canvas_img/255.0
 
         # print('self canvas: {}, {}'.format(np.min(self.canvas_img), np.max(self.canvas_img)))
         self.set_img(self.to_qt_img(self.canvas_img.copy()), label)
