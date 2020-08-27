@@ -23,7 +23,7 @@ parser.add_argument('-m', '--mask', type=str, help='mask file')
 parser.add_argument('-i', '--ibl', type=str, help='ibl file')
 parser.add_argument('-o', '--output', type=str, help='output folder')
 parser.add_argument('-w', '--weight', type=str, help='weight of current model',
-                    default='weights/group_norm_15-May-07-45-PM.pt')
+                    default='weights/baseline_generic_22-May-12-22-AM.pt')
 parser.add_argument('-v', '--verbose', action='store_true', help='output file name')
 
 options = parser.parse_args()
