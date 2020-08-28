@@ -12,7 +12,7 @@ import evaluation
 from drag_widget import drag_img
 from ibl_widget import ibl_widget
 
-SIZE_MIN, SIZE_MAX = 0.1, 1.0
+SIZE_MIN, SIZE_MAX = 0.01, 1.0
 
 class composite_gui(QMainWindow):
     def __init__(self):
@@ -107,7 +107,7 @@ class composite_gui(QMainWindow):
         self.show()
 
     def init_state(self):
-        self.add_light()
+        # self.add_light()
         self.show_shadow = True
 
     def set_menu(self):
@@ -267,7 +267,7 @@ class composite_gui(QMainWindow):
         """
             Render shadow to canvas
         """
-        if len(self.cutout_layer) == 0 or not self.show_shadow:
+        if len(self.cutout_layer) == 0 or not self.show_shadow or self.ibl.get_light_num() == 0:
             return cur_canvas
 
         # h x w

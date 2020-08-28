@@ -67,8 +67,10 @@ class ibl_widget(QLabel):
             # delete current ibl
             self.ibls = self.ibls[:self.cur_ibl] + self.ibls[self.cur_ibl+1:]
             self.cur_ibl = min(self.cur_ibl, len(self.ibls) - 1)
-            self.parent_handle.update_list(self.cur_ibl)
             self.update_ibl()
+            self.parent_handle.update_list(self.cur_ibl)
+            self.parent_handle.render_layers()
+
 
     def mouseReleaseEvent(self, e):
         pass
