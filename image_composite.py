@@ -175,7 +175,8 @@ class composite_gui(QMainWindow):
 
     def load_file(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        fname = QFileDialog.getOpenFileName(self, 'Open file', os.path.join(dir_path,'imgs'))
+        test_folder = '/home/ysheng/Documents/paper_project/adobe/failed_case/geenral_net'
+        fname = QFileDialog.getOpenFileName(self, 'Open file', os.path.join(test_folder))
         return fname[0]
 
     def add_cutout(self, filename):
@@ -363,7 +364,7 @@ class composite_gui(QMainWindow):
 
         # layer results
         out_img = self.render_layers()
-        if cv2.imwrite(save_fname[0], out_img*255.0):
+        if plt.imsave(save_fname[0], out_img):
             print('file {} saved succeed'.format(save_fname[0]))
         else:
             print('file {} save fail'.format(save_fname[0]))
@@ -374,7 +375,7 @@ class composite_gui(QMainWindow):
 
         shadow_out_fanme = 'shadow_' + os.path.basename(save_fname[0])
 
-        if cv2.imwrite(os.path.join(os.path.dirname(save_fname[0]), shadow_out_fanme), shadow_layer*255.0):
+        if plt.imsave(os.path.join(os.path.dirname(save_fname[0]), shadow_out_fanme), shadow_layer):
             print('file {} saved succeed'.format(save_fname[0]))
         else:
             print('file {} save fail'.format(save_fname[0]))
