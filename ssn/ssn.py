@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .ssn_submodule import Conv, Up, Up_Stream, get_layer_info, add_coords
+from .ssn_submodule import Conv, Up, Up_Stream, get_layer_info
 from params import params
 
 class Relight_SSN(nn.Module):
@@ -30,9 +30,6 @@ class Relight_SSN(nn.Module):
                 nn.Conv2d(n_channels, 32 - n_channels, kernel_size=7, padding=3, bias=True),
                 activation_func
             )
-
-        if parameter.coordconv:
-            self.in_conv       = Conv(n_channels, 32 - n_channels, kernel_size=7, conv_stride=1, padding=3, bias=True)
 
         self.down_256_128  = Conv(32, 64, conv_stride=2)
         self.down_128_128  = Conv(64, 64, conv_stride=1)

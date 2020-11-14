@@ -15,6 +15,7 @@ class painter_widget(QLabel):
         self.set_img(img, self)
         self.last_x, self.last_y = None, None
         self.begin_paint = False
+        self.left = True
 
     """ Utilities
     """
@@ -35,8 +36,12 @@ class painter_widget(QLabel):
         w,h = img.width(), img.height()
         label.adjustSize()
     
+    def get_img(self):
+        return self.buffer[:,:,0]
+    
     def update_display(self):
         self.set_img(self.to_qt_img(self.buffer), self)
+        self.update()
     
     def mouseMoveEvent(self, e):
         if not self.begin_paint:
@@ -49,7 +54,14 @@ class painter_widget(QLabel):
             
         pil_img = Image.fromarray(np.uint8(self.buffer * 255))
         draw = ImageDraw.Draw(pil_img)
-        draw.line((self.last_x, self.last_y, e.x(), e.y()), width=3)
+        if self.left:
+            fill = (255,255,255)
+            width = 5
+        else:
+            fill = 0
+            width = 10
+
+        draw.line((self.last_x, self.last_y, e.x(), e.y()), fill=fill, width=width)
         self.buffer = np.array(pil_img) 
         if self.buffer.dtype == np.uint8:
             self.buffer = self.buffer / 255.0 
@@ -66,7 +78,8 @@ class painter_widget(QLabel):
         self.begin_paint = False
     
     def mousePressEvent(self, e):
-        print('begin paint')
+        # print('begin paint')
+        self.left = e.button() == Qt.LeftButton
         self.begin_paint = True
 
 if __name__ == '__main__':

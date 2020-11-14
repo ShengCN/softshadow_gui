@@ -11,6 +11,7 @@ import cv2
 import evaluation
 from drag_widget import drag_img
 from ibl_widget import ibl_widget
+from painter_widget import painter_widget
 
 SIZE_MIN, SIZE_MAX = 0.01, 1.0
 
@@ -50,6 +51,8 @@ class composite_gui(QMainWindow):
         self.ibl = ibl_widget(self)
         self.light_list = QListWidget(self)
         self.light_list.itemClicked.connect(self.light_item_clicked)
+        
+        self.touch_widget = painter_widget(256, 256, self)
 
         # sliders
         self.shadow_intensity_label = QLabel('intensity', self)
@@ -77,17 +80,20 @@ class composite_gui(QMainWindow):
         self.canvas_group.setLayout(canvas_layout)
 
         control_group = QGroupBox('control', self)
-        control_layout = QtWidgets.QVBoxLayout()
-        control_layout.addWidget(self.ibl)
-        control_layout.addWidget(self.light_list)
-        control_layout.addWidget(self.shadow_intensity_label)
-        control_layout.addWidget(self.shadow_intensity_slider)
-        control_layout.addWidget(self.size_label)
-        control_layout.addWidget(self.size_slider)
-        control_layout.addWidget(self.scale_label)
-        control_layout.addWidget(self.scale_slider)
-        control_layout.addWidget(self.save_btn)
-        control_group.setLayout(control_layout)
+        light_control_layout = QtWidgets.QVBoxLayout()
+        widget_layout = QtWidgets.QHBoxLayout()
+        widget_layout.addWidget(self.ibl)
+        widget_layout.addWidget(self.touch_widget)
+        light_control_layout.addLayout(widget_layout)
+        light_control_layout.addWidget(self.light_list)
+        light_control_layout.addWidget(self.shadow_intensity_label)
+        light_control_layout.addWidget(self.shadow_intensity_slider)
+        light_control_layout.addWidget(self.size_label)
+        light_control_layout.addWidget(self.size_slider)
+        light_control_layout.addWidget(self.scale_label)
+        light_control_layout.addWidget(self.scale_slider)
+        light_control_layout.addWidget(self.save_btn)
+        control_group.setLayout(light_control_layout)
 
         grid = QGridLayout()
         grid.addWidget(self.canvas_group, 0, 0)
@@ -288,16 +294,17 @@ class composite_gui(QMainWindow):
         for cutout in self.cutout_layer:
             cur_curout = cutout.get_img() # h x w x 4
             cur_curout = cv2.resize(cur_curout,(256,256))
-            cur_curout = np.transpose(cur_curout[:,:,3:], (2,0,1))
+            cur_curout = cur_curout[:,:,-1]
+            cur_touch = self.touch_widget.get_img()
+            print('cur cutout: {}, cur touch: {}'.format(cur_curout.shape, cur_touch.shape))
+            inputs = np.concatenate((cur_curout[:,:,np.newaxis],cur_touch[:,:,np.newaxis]), axis=2)
+            cur_curout = np.transpose(inputs, (2,0,1))
             mask_input.append(cur_curout)
 
         # b x c x h x w
         mask_input = np.array(mask_input)
-        # print('mask input: {}, {}, ibl: {}, {}, {}'.format(np.min(mask_input), np.max(mask_input), np.min(ibl_np), np.max(ibl_np), np.sum(ibl_np)))
         shadow_pred = evaluation.net_render_np(mask_input, ibl_np)
-        # print('shadow pred: {}, {}'.format(np.min(shadow_pred), np.max(shadow_pred)))
         tmp = cur_canvas
-        # print('canvas range: {}, {}'.format(np.min(tmp), np.max(tmp)))
         for i, shadow in enumerate(shadow_pred):
             shadow = np.transpose(shadow, (1,2,0))
             # print('shadow shape: ', shadow.shape)
