@@ -17,7 +17,7 @@ class Relight_SSN(nn.Module):
         else:
             activation_func = 'relu'
         
-        norm_layer, activation_func = get_layer_info(32 - n_channels, activation_func)
+        norm_layer, activation_func = get_layer_info(32 - n_channels)
 
         if parameter.baseline and (norm_layer is not None):
             self.in_conv = nn.Sequential(

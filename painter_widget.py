@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QPixmap, QImage
 import numpy as np
 from PIL import Image, ImageDraw
+import matplotlib.pyplot as plt
 
 class painter_widget(QLabel):
     def __init__(self, h, w, parent):
@@ -25,10 +26,13 @@ class painter_widget(QLabel):
             np_img = np_img * 255.0
             np_img = np_img.astype(np.uint8)
 
-
         h, w, c = np_img.shape
         # bytesPerLine = 3 * w
         return QImage(np_img.data, w, h, QImage.Format_RGB888)
+    
+    def update_pred(self, img):
+        self.buffer = img
+        self.update_display()
 
     def set_img(self, img, label):
         pixmap = QPixmap(img)
@@ -56,7 +60,7 @@ class painter_widget(QLabel):
         draw = ImageDraw.Draw(pil_img)
         if self.left:
             fill = (255,255,255)
-            width = 5
+            width = 3
         else:
             fill = 0
             width = 10

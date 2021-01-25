@@ -123,6 +123,13 @@ class ibl_widget(QLabel):
                             xdensity=512)
 
         self.ibl_img = np.repeat(gs()[:,:,np.newaxis], 3, axis=2)
+
+        w = self.ibl_img.shape[1]
+        tmp = self.ibl_img.copy()
+        ret = tmp.copy()
+        ret[:,:w//2], ret[:,w//2:] = tmp[:,w//2:], tmp[:,:w//2]
+
+        plt.imsave("test_sharp.png", np.clip(ret, 0.0, 1.0))
         self.set_img(self.ibl_img)
         self.parent_handle.render_layers()
 
