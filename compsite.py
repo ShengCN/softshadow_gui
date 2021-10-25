@@ -75,6 +75,7 @@ def to_net_mask(ori_input):
     return ret, fact, padding_offset
 
 def composite(ori_input, shadow_img, bg_img,out_fname, norm=False):
+    # import pdb; pdb.set_trace()
     img = ori_input
     _, fact, padding_offset = to_net_mask(ori_input)
 
@@ -101,7 +102,11 @@ def composite(ori_input, shadow_img, bg_img,out_fname, norm=False):
     final_anchor_size = max(shadow_offset_h,shadow_offset_w)
     final_anchor = [final_anchor_size,final_anchor_size]
     
+    # tmp = 0
+    # tmp_np = new_shaodow_img.copy()
+    # new_shaodow_img[:-tmp,:,:] = tmp_np[tmp:,:,:]
     final_img[final_anchor[0]-shadow_offset_h:final_anchor[0]-shadow_offset_h + new_shadow_size, final_anchor[1]-shadow_offset_w:final_anchor[1]-shadow_offset_w+new_shadow_size,:3] *= new_shaodow_img[:,:,:3] 
+    
     final_img[final_anchor[0]:final_anchor[0]+h,final_anchor[1]:final_anchor[1]+w, :3] = cropped * img[anchor[1]:anchor[1] + h, anchor[0]:anchor[0] + w,:3] + (1.0-cropped) * final_img[final_anchor[0]:final_anchor[0]+h,final_anchor[1]:final_anchor[1]+w,:3]
     
     final_cropped = final_img[final_anchor[0]-shadow_offset_h:final_anchor[0]-shadow_offset_h + new_shadow_size, final_anchor[1]-shadow_offset_w:final_anchor[1]-shadow_offset_w+new_shadow_size,:3]

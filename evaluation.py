@@ -26,10 +26,12 @@ parser.add_argument('-f', '--file', type=str, help='input model file')
 parser.add_argument('-m', '--mask', type=str, help='mask file')
 parser.add_argument('-i', '--ibl', type=str, help='ibl file')
 parser.add_argument('-o', '--output', type=str, help='output folder')
-parser.add_argument('-w', '--weight', type=str, help='weight of current model',
-                    default='weights/human_touch.pt')
 # parser.add_argument('-w', '--weight', type=str, help='weight of current model',
-#                     default='weights/general_tbaseline_13-November-02-23-AM.pt')
+#                     default='weights/human_tbaseline_08-November-02-19-PM.pt')
+# parser.add_argument('-w', '--weight', type=str, help='weight of current model',
+#                     default='weights/human_touch.pt')
+parser.add_argument('-w', '--weight', type=str, help='weight of current model',
+                    default='weights/general_tbaseline_13-November-02-23-AM.pt')
 # parser.add_argument('-w', '--weight', type=str, help='weight of current model',
 #                       default='weights/new_arch_touch_100%.pt')
 parser.add_argument('-v', '--verbose', action='store_true', help='output file name')
@@ -84,16 +86,22 @@ def net_render_np(mask_np, ibl_np):
 
 if __name__ == '__main__':
     name = 'woman'
-    mask_path = '/home/ysheng/Documents/paper_project/adobe/soft_shadow/paper_demo/supplementary/videos/mask/{}.png'.format(name)
-    ao_path = '/home/ysheng/Documents/paper_project/adobe/soft_shadow/paper_demo/supplementary/videos/ao/{}.png'.format(name)
+    mask_path = '/home/ysheng/Documents/paper_project/adobe/SSN/soft_shadow/paper_demo/rebuttal/general_rebuttal_mask.png'
+    ao_path = '/home/ysheng/Documents/paper_project/adobe/SSN/soft_shadow/paper_demo/rebuttal/general_rebuttal_ao.png'
 
-    light_folder = '/home/ysheng/Documents/paper_project/adobe/soft_shadow/paper_demo/supplementary/videos/lights'
-    out_folder = '/home/ysheng/Documents/paper_project/adobe/soft_shadow/paper_demo/supplementary/videos/shadow'
+    light_folder = '/home/ysheng/Documents/paper_project/adobe/SSN/soft_shadow/paper_demo/rebuttal/lights'
+    out_folder = '/home/ysheng/Documents/paper_project/adobe/SSN/soft_shadow/paper_demo/rebuttal/shadows'
     os.makedirs(out_folder, exist_ok=True)
     
-    light_files = glob.glob(join(light_folder, '*'))
+    ao_img = plt.imread(ao_path)[:,:,:1]
+    ao_img = np.transpose(ao_img, (2,0,1))
+    ao_img = ao_img[np.newaxis, :,:,:]
+    light_files = glob.glob(join(light_folder, '*.npy'))
     for l in tqdm(light_files):
-        ibl_np = plt.imread(l)[:,:,:1]
+        ibl_np = np.load(l)
+        h,w = ibl_np.shape
+        ibl_np = ibl_np[:h//2, :]
+        # ibl_np = plt.imread(l)[:,:,:1]
         ibl_np = cv2.resize(ibl_np, (32, 16))
         ibl_np = cv2.flip(ibl_np, 0)
         ibl_np = np.transpose(np.expand_dims(cv2.resize(ibl_np, (32, 16), cv2.INTER_LINEAR), axis=2), (2,0,1))
@@ -105,10 +113,10 @@ if __name__ == '__main__':
         mask_img = cv2.resize(mask_img, (256,256))
         mask_input = np.transpose(mask_img[:,:,np.newaxis], (2,0,1))
         mask_input = mask_input[np.newaxis, :,:,:]
-        
-        ao_img = plt.imread(ao_path)[:,:,:1]
-        ao_img = np.transpose(ao_img, (2,0,1))
-        ao_img = ao_img[np.newaxis, :,:,:]
+
+        # ao_img = plt.imread(ao_path)[:,:,:1]
+        # ao_img = np.transpose(ao_img, (2,0,1))
+        # ao_img = ao_img[np.newaxis, :,:,:]
 
         # ao_pred = net_pred_touch(mask_input, ibl_np)
         inputs = np.concatenate((mask_input, ao_img), axis=1)
@@ -120,17 +128,35 @@ if __name__ == '__main__':
         
         shadow_pred = np.repeat(shadow_pred[:,:,np.newaxis], 3, axis=2)
 
-        out_fname = join(out_folder, os.path.basename(l))
+        out_fname = join(out_folder, os.path.basename(l)[:-3] + 'png')
         plt.imsave(out_fname, shadow_pred)
             
     
-    ofolder = '/home/ysheng/Documents/paper_project/adobe/soft_shadow/paper_demo/supplementary/videos'
-    shadows = glob.glob(join(ofolder, 'shadow/*'))
-    ori_input = plt.imread(join(ofolder,'segmentation/{}.png'.format(name)))
+    ofolder = '/home/ysheng/Documents/paper_project/adobe/SSN/soft_shadow/paper_demo/rebuttal'
+    shadows = glob.glob(join(ofolder, 'shadows/*'))
+
+    ori_input = plt.imread(join(ofolder,'general_cutout.png'))
     # bg_img = plt.imread(join(ofolder, 'bg.png'))
     bg_img = np.ones((512,512,4))
 
+    light_folder = join(ofolder, 'lights')
     for s in tqdm(shadows):
         shadow_img = 1.0 - plt.imread(s)[:,:,:3]
-        outfname = join(ofolder, 'comp', '{}_'.format(name) + os.path.basename(s))
-        composite(ori_input, shadow_img, bg_img, outfname, False)
+        # shadow_img = np.power(shadow_img, 0.55)
+        outfname = join(ofolder, 'comp', os.path.basename(s))
+
+        img = composite(ori_input, shadow_img, bg_img, outfname, False)
+        
+        img = cv2.resize(img, (512,512), interpolation=cv2.INTER_AREA)
+
+        light = np.load(join(light_folder, os.path.basename(s)[:-3] + 'npy'))
+        light = np.repeat(light[:,:,np.newaxis], 3, axis=2)
+        light = cv2.resize(light, (200,100))
+        light = light/np.max(light)
+        
+
+        h,w,c = light.shape
+
+        img[:h, -w:, :3] = light
+        img = np.clip(img, 0.0, 1.0)
+        plt.imsave(outfname, img)
