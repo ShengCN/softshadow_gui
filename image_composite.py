@@ -11,6 +11,7 @@ import cv2
 import evaluation
 from drag_widget import drag_img
 from ibl_widget import ibl_widget
+from painter_widget import painter_widget
 
 SIZE_MIN, SIZE_MAX = 0.01, 1.0
 
@@ -21,6 +22,7 @@ class composite_gui(QMainWindow):
         self.left, self.top = 400,400
         self.width, self.height = 1720, 1080
         self.cutout_count = 0
+        self.cur_ao_name = 'user_ao.png'
 
         self.init_ui()
 
@@ -50,6 +52,8 @@ class composite_gui(QMainWindow):
         self.ibl = ibl_widget(self)
         self.light_list = QListWidget(self)
         self.light_list.itemClicked.connect(self.light_item_clicked)
+        
+        self.touch_widget = painter_widget(256, 256, self)
 
         # sliders
         self.shadow_intensity_label = QLabel('intensity', self)
@@ -77,17 +81,20 @@ class composite_gui(QMainWindow):
         self.canvas_group.setLayout(canvas_layout)
 
         control_group = QGroupBox('control', self)
-        control_layout = QtWidgets.QVBoxLayout()
-        control_layout.addWidget(self.ibl)
-        control_layout.addWidget(self.light_list)
-        control_layout.addWidget(self.shadow_intensity_label)
-        control_layout.addWidget(self.shadow_intensity_slider)
-        control_layout.addWidget(self.size_label)
-        control_layout.addWidget(self.size_slider)
-        control_layout.addWidget(self.scale_label)
-        control_layout.addWidget(self.scale_slider)
-        control_layout.addWidget(self.save_btn)
-        control_group.setLayout(control_layout)
+        light_control_layout = QtWidgets.QVBoxLayout()
+        widget_layout = QtWidgets.QHBoxLayout()
+        widget_layout.addWidget(self.ibl)
+        widget_layout.addWidget(self.touch_widget)
+        light_control_layout.addLayout(widget_layout)
+        light_control_layout.addWidget(self.light_list)
+        light_control_layout.addWidget(self.shadow_intensity_label)
+        light_control_layout.addWidget(self.shadow_intensity_slider)
+        light_control_layout.addWidget(self.size_label)
+        light_control_layout.addWidget(self.size_slider)
+        light_control_layout.addWidget(self.scale_label)
+        light_control_layout.addWidget(self.scale_slider)
+        light_control_layout.addWidget(self.save_btn)
+        control_group.setLayout(light_control_layout)
 
         grid = QGridLayout()
         grid.addWidget(self.canvas_group, 0, 0)
@@ -109,6 +116,7 @@ class composite_gui(QMainWindow):
     def init_state(self):
         # self.add_light()
         self.show_shadow = True
+        self.update_ao = True
 
     def set_menu(self):
         main_menu = self.menuBar()
@@ -175,7 +183,10 @@ class composite_gui(QMainWindow):
 
     def load_file(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        fname = QFileDialog.getOpenFileName(self, 'Open file', os.path.join(dir_path,'imgs'))
+        # test_folder = '/home/ysheng/Documents/paper_project/adobe/failed_case/geenral_net'
+        test_folder = '/home/ysheng/Documents/paper_project/adobe/soft_shadow/paper_demo/supplementary/videos/mask'
+        fname = QFileDialog.getOpenFileName(self, 'Open file', os.path.join(test_folder))
+        self.cur_ao_name = os.path.basename(fname[0])
         return fname[0]
 
     def add_cutout(self, filename):
@@ -272,35 +283,63 @@ class composite_gui(QMainWindow):
 
         # h x w
         ibl_np = self.ibl.get_ibl_numpy()
-
-        # before passed into net, some modification needs to be done on ibl
-        ibl_np = ibl_np[:80, :]
-        ibl_np = cv2.flip(ibl_np, 0)
-
+        ibl_np = ibl_np[:128,:]
+        ibl_np = cv2.resize(ibl_np, (32, 16))
+        ibl_np = cv2.flip(ibl_np, 0)        
+        
         ibl_np = np.transpose(np.expand_dims(cv2.resize(ibl_np, (32, 16), cv2.INTER_LINEAR), axis=2), (2,0,1))
         if np.sum(ibl_np) > 1e-3:
             ibl_np = ibl_np * 30.0 / np.sum(ibl_np)
         ibl_np = np.repeat(ibl_np[np.newaxis,:,:,:], len(self.cutout_layer), axis=0)
 
         # convert to predict format
+        if self.update_ao:
+            mask_input = []
+            for cutout in self.cutout_layer:
+                cur_curout = cutout.get_img() # h x w x 4
+                cur_curout = cv2.resize(cur_curout,(256,256))
+                cur_curout= cur_curout[:,:,-1:]
+                
+                cur_curout = np.transpose(cur_curout, (2,0,1))
+                mask_input.append(cur_curout)
+             
+            ao_pred = evaluation.net_pred_touch(np.array(mask_input), ibl_np)
+            ao_pred = ao_pred[0]
+            ao_pred = np.transpose(ao_pred, (1,2,0))
+            save_pred = ao_pred.copy()
+            cv2.normalize(save_pred, save_pred,0.0,1.0,cv2.NORM_MINMAX)
+            save_pred = np.repeat(save_pred, 3, axis=2)
+            plt.imsave('AO_pred.png', save_pred)
+
+            self.touch_widget.update_pred(save_pred)
+            self.update_ao = False
+
         mask_input = []
         for cutout in self.cutout_layer:
             cur_curout = cutout.get_img() # h x w x 4
             cur_curout = cv2.resize(cur_curout,(256,256))
-            cur_curout = np.transpose(cur_curout[:,:,3:], (2,0,1))
+            cur_curout = cur_curout[:,:,-1]
+            cur_touch = self.touch_widget.get_img() * 1.3
+            
+            save_user_ao = self.touch_widget.get_img()
+            plt.imsave(self.cur_ao_name,np.clip(np.repeat(save_user_ao[:,:,np.newaxis], 3, axis=2), 0.0,1.0))
+
+            print('cur cutout: {}, cur touch: {} {} {}'.format(cur_curout.shape, cur_touch.shape, cur_touch.min(), cur_touch.max()))
+            inputs = np.concatenate((cur_curout[:,:,np.newaxis],cur_touch[:,:,np.newaxis]), axis=2)
+            cur_curout = np.transpose(inputs, (2,0,1))
             mask_input.append(cur_curout)
 
         # b x c x h x w
         mask_input = np.array(mask_input)
-        # print('mask input: {}, {}, ibl: {}, {}, {}'.format(np.min(mask_input), np.max(mask_input), np.min(ibl_np), np.max(ibl_np), np.sum(ibl_np)))
+        
         shadow_pred = evaluation.net_render_np(mask_input, ibl_np)
-        # print('shadow pred: {}, {}'.format(np.min(shadow_pred), np.max(shadow_pred)))
         tmp = cur_canvas
-        # print('canvas range: {}, {}'.format(np.min(tmp), np.max(tmp)))
         for i, shadow in enumerate(shadow_pred):
             shadow = np.transpose(shadow, (1,2,0))
             # print('shadow shape: ', shadow.shape)
             cv2.normalize(shadow[:,:,0], shadow[:,:,0], 0.0, 1.0, cv2.NORM_MINMAX)
+
+            plt.imsave("net_shadow.png", np.repeat(shadow, 3, axis=2))
             h,w = shadow.shape[0], shadow.shape[1]
             shadow = self.soft_shadow_boundary(shadow) * self.cur_shadow_itensity_fract
             shadow_out = np.zeros((h,w,3))
@@ -325,6 +364,13 @@ class composite_gui(QMainWindow):
             self.show_shadow = self.show_shadow ^ True
             print('press space, toggle show shadow ', self.show_shadow)
             self.render_layers()
+        if event.key() == Qt.Key_T:
+            print("Pressed T")
+            self.update_ao = True
+        if event.key() == Qt.Key_C:
+            print("Clear layers")
+            self.cutout_count = 0
+            self.cutout_layer.clear()
 
     #################### Actions ##############################
     @pyqtSlot()
@@ -363,7 +409,7 @@ class composite_gui(QMainWindow):
 
         # layer results
         out_img = self.render_layers()
-        if cv2.imwrite(save_fname[0], out_img*255.0):
+        if plt.imsave(save_fname[0], out_img):
             print('file {} saved succeed'.format(save_fname[0]))
         else:
             print('file {} save fail'.format(save_fname[0]))
@@ -374,7 +420,7 @@ class composite_gui(QMainWindow):
 
         shadow_out_fanme = 'shadow_' + os.path.basename(save_fname[0])
 
-        if cv2.imwrite(os.path.join(os.path.dirname(save_fname[0]), shadow_out_fanme), shadow_layer*255.0):
+        if plt.imsave(os.path.join(os.path.dirname(save_fname[0]), shadow_out_fanme), shadow_layer):
             print('file {} saved succeed'.format(save_fname[0]))
         else:
             print('file {} save fail'.format(save_fname[0]))
